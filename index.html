@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGPU Quad</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas {
+            border: 2px solid #333;
+            border-radius: 8px;
+        }
+        .info {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebGPU Centered Quad</h1>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <div class="info">
+        <p>A simple quad rendered with WebGPU</p>
+        <p id="status">Initializing...</p>
+    </div>
+
+    <script>
+        async function main() {
+            const canvas = document.getElementById('canvas');
+            const status = document.getElementById('status');
+
+            // Check WebGPU support
+            if (!navigator.gpu) {
+                status.textContent = 'WebGPU not supported in this browser';
+                return;
+            }
+
+            try {
+                // Initialize WebGPU
+                const adapter = await navigator.gpu.requestAdapter();
+                if (!adapter) {
+                    status.textContent = 'No WebGPU adapter found';
+                    return;
+                }
+
+                const device = await adapter.requestDevice();
+                const context = canvas.getContext('webgpu');
+                const format = navigator.gpu.getPreferredCanvasFormat();
+
+                context.configure({
+                    device: device,
+                    format: format,
+                });
+
+                // Vertex data for a quad (position + color)
+                // Normalized device coordinates (-1 to 1)
+                const vertices = new Float32Array([
+                    // Bottom left
+                    -0.5, -0.5,  1, 0, 0, // Red
+                    // Bottom right  
+                     0.5, -0.5,  0, 1, 0, // Green
+                    // Top right
+                     0.5,  0.5,  0, 0, 1, // Blue
+                    // Top left
+                    -0.5,  0.5,  1, 1, 0, // Yellow
+                ]);
+
+                const indices = new Uint16Array([
+                    0, 1, 2,  // First triangle
+                    0, 2, 3   // Second triangle
+                ]);
+
+                // Create vertex buffer
+                const vertexBuffer = device.createBuffer({
+                    size: vertices.byteLength,
+                    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+                });
+                device.queue.writeBuffer(vertexBuffer, 0, vertices);
+
+                // Create index buffer
+                const indexBuffer = device.createBuffer({
+                    size: indices.byteLength,
+                    usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+                });
+                device.queue.writeBuffer(indexBuffer, 0, indices);
+
+                // Shader code
+                const shaderCode = `
+                    struct VertexInput {
+                        @location(0) position: vec2<f32>,
+                        @location(1) color: vec3<f32>,
+                    }
+                    
+                    struct VertexOutput {
+                        @builtin(position) position: vec4<f32>,
+                        @location(0) color: vec3<f32>,
+                    }
+                    
+                    @vertex
+                    fn vs_main(input: VertexInput) -> VertexOutput {
+                        var output: VertexOutput;
+                        output.position = vec4<f32>(input.position, 0.0, 1.0);
+                        output.color = input.color;
+                        return output;
+                    }
+                    
+                    @fragment
+                    fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
+                        return vec4<f32>(input.color, 1.0);
+                    }
+                `;
+
+                // Create shader module
+                const shaderModule = device.createShaderModule({
+                    code: shaderCode,
+                });
+
+                // Create render pipeline
+                const pipeline = device.createRenderPipeline({
+                    layout: 'auto',
+                    vertex: {
+                        module: shaderModule,
+                        entryPoint: 'vs_main',
+                        buffers: [{
+                            arrayStride: 20, // 5 floats * 4 bytes = 20 bytes
+                            attributes: [
+                                {
+                                    shaderLocation: 0,
+                                    offset: 0,
+                                    format: 'float32x2', // position (x, y)
+                                },
+                                {
+                                    shaderLocation: 1,
+                                    offset: 8,
+                                    format: 'float32x3', // color (r, g, b)
+                                },
+                            ],
+                        }],
+                    },
+                    fragment: {
+                        module: shaderModule,
+                        entryPoint: 'fs_main',
+                        targets: [{
+                            format: format,
+                        }],
+                    },
+                    primitive: {
+                        topology: 'triangle-list',
+                    },
+                });
+
+                status.textContent = 'WebGPU initialized successfully! Rendering quad...';
+
+                // Render function
+                function render() {
+                    // Create command encoder
+                    const commandEncoder = device.createCommandEncoder();
+
+                    // Begin render pass
+                    const renderPass = commandEncoder.beginRenderPass({
+                        colorAttachments: [{
+                            view: context.getCurrentTexture().createView(),
+                            clearValue: { r: 0.1, g: 0.1, b: 0.2, a: 1.0 },
+                            loadOp: 'clear',
+                            storeOp: 'store',
+                        }],
+                    });
+
+                    // Draw the quad
+                    renderPass.setPipeline(pipeline);
+                    renderPass.setVertexBuffer(0, vertexBuffer);
+                    renderPass.setIndexBuffer(indexBuffer, 'uint16');
+                    renderPass.drawIndexed(6); // 2 triangles * 3 vertices = 6 indices
+                    renderPass.end();
+
+                    // Submit commands
+                    device.queue.submit([commandEncoder.finish()]);
+                }
+
+                // Render once (static quad)
+                render();
+
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                console.error(error);
+            }
+        }
+
+        main();
+    </script>
+</body>
+</html>
