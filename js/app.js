@@ -27,8 +27,8 @@ export class WebGPUApp {
             const { device, context, format } = await this.initializer.initialize();
 
             // Create shader manager and pipeline
-            this.shaderManager = new ShaderManager(device);
-            const pipeline = this.shaderManager.createRenderPipeline(format);
+            this.shaderManager = new ShaderManager(device, 'shaders/raster2DColoredVertex.wgsl');
+            const pipeline = await this.shaderManager.createRenderPipeline(format);
 
             // Create geometry
             this.geometryManager = new GeometryManager(device);
