@@ -20,27 +20,28 @@ export class ShaderManager {
         return this.shaderModule;
     }
 
-    async createRenderPipeline(format) {
+
+    async createRenderPipeline(format, depth = false) {
         if (!this.shaderModule) {
             await this.createShaderModule();
         }
 
-        this.pipeline = this.device.createRenderPipeline({
+        const pipelineConfig = {
             layout: 'auto',
             vertex: {
                 module: this.shaderModule,
                 entryPoint: 'vs_main',
                 buffers: [{
-                    arrayStride: 20, // 5 floats * 4 bytes = 20 bytes
+                    arrayStride: 24, // 6 floats * 4 bytes = 24 bytes
                     attributes: [
                         {
                             shaderLocation: 0,
                             offset: 0,
-                            format: 'float32x2', // position (x, y)
+                            format: 'float32x3', // position (x, y, z)
                         },
                         {
                             shaderLocation: 1,
-                            offset: 8,
+                            offset: 12,
                             format: 'float32x3', // color (r, g, b)
                         },
                     ],
@@ -56,8 +57,18 @@ export class ShaderManager {
             primitive: {
                 topology: 'triangle-list',
             },
-        });
+        };
 
+        // Add depth testing for 3D
+        if (depth) {
+            pipelineConfig.depthStencil = {
+                depthWriteEnabled: true,
+                depthCompare: 'less',
+                format: 'depth24plus',
+            };
+        }
+
+        this.pipeline = this.device.createRenderPipeline(pipelineConfig);
         return this.pipeline;
     }
 }
