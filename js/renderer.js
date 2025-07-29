@@ -111,8 +111,14 @@ export class Renderer3D extends Renderer {
     }
 
     createRenderPassDescriptor() {
-        const descriptor = super.createRenderPassDescriptor();
-        
+        const descriptor = {
+            colorAttachments: [{
+                view: this.context.getCurrentTexture().createView(),
+                clearValue: { r: 0.1, g: 0.1, b: 0.2, a: 1.0 },
+                loadOp: 'load',
+                storeOp: 'store',
+            }]
+        };
         if (this.depthTexture) {
             descriptor.depthStencilAttachment = {
                 view: this.depthTexture.createView(),

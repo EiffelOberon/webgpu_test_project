@@ -10,13 +10,13 @@ export class GeometryManager {
         // Normalized device coordinates (-1 to 1)
         const vertices = new Float32Array([
             // Bottom left
-            -0.5, -0.5, 0.0,  1, 0, 0, // Red
+            -1.0, -1.0, 0.0,  1, 0, 0, // Red
             // Bottom right  
-             0.5, -0.5, 0.0,  0, 1, 0, // Green
+             1.0, -1.0, 0.0,  0, 1, 0, // Green
             // Top right
-             0.5,  0.5, 0.0,  0, 0, 1, // Blue
+             1.0, 1.0, 0.0,  0, 0, 1, // Blue
             // Top left
-            -0.5,  0.5, 0.0,  1, 1, 0, // Yellow
+            -1.0, 1.0, 0.0,  1, 1, 0, // Yellow
         ]);
 
         const indices = new Uint16Array([

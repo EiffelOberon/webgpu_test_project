@@ -17,6 +17,8 @@ export class WebGPUApp {
         this.currentMode = '3d'; // Start with 3D mode
         this.rotationY = 0;
         this.animationId = null;
+        this.quadGeometry = null;
+        this.cubeGeometry = null;
     }
 
     async initialize() {
@@ -47,6 +49,10 @@ export class WebGPUApp {
             this.renderer2D = new Renderer2D(device, context, pipeline2D);
             this.renderer3D = new Renderer3D(device, context, pipeline3D);
 
+            // Create geometry buffers once during initialization
+            this.quadGeometry = this.geometryManager.createBuffers('quad');
+            this.cubeGeometry = this.geometryManager.createBuffers('cube');
+
             this.status.textContent = 'WebGPU initialized successfully! Rendering 3D cube...';
 
             // Start with 3D rendering
@@ -66,11 +72,8 @@ export class WebGPUApp {
     animate() {
         this.rotationY += 0.01;
         
-        if (this.currentMode === '3d') {
-            this.render3DCube();
-        } else {
-            this.renderQuad();
-        }
+        this.renderQuad();
+        this.render3DCube();
         
         this.animationId = requestAnimationFrame(() => this.animate());
     }
@@ -83,19 +86,19 @@ export class WebGPUApp {
     }
 
     renderQuad() {
-        if (!this.geometryManager || !this.renderer2D) {
+        if (!this.quadGeometry || !this.renderer2D) {
             console.error('App not properly initialized');
             return;
         }
 
-        const { vertexBuffer, indexBuffer, indexCount } = this.geometryManager.createBuffers('quad');
+        const { vertexBuffer, indexBuffer, indexCount } = this.quadGeometry;
         this.renderer2D.setGeometry(vertexBuffer, indexBuffer, indexCount);
         this.renderer2D.render();
         this.status.textContent = 'Rendering 2D quad...';
     }
 
     render3DCube() {
-        if (!this.geometryManager || !this.renderer3D) {
+        if (!this.cubeGeometry || !this.renderer3D) {
             console.error('App not properly initialized');
             return;
         }
@@ -119,22 +122,11 @@ export class WebGPUApp {
         this.renderer3D.updateUniforms(viewProjectionMatrix, modelMatrix);
         
         // Set up geometry and rendering
-        const { vertexBuffer, indexBuffer, indexCount } = this.geometryManager.createBuffers('cube');
+        const { vertexBuffer, indexBuffer, indexCount } = this.cubeGeometry;
         this.renderer3D.setGeometry(vertexBuffer, indexBuffer, indexCount);
         this.renderer3D.render();
         
         this.status.textContent = 'Rendering 3D cube...';
-    }
-
-    switchTo2D() {
-        this.stopAnimation();
-        this.currentMode = '2d';
-        this.renderQuad();
-    }
-
-    switchTo3D() {
-        this.currentMode = '3d';
-        this.startAnimation();
     }
 }
 
